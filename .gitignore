@@ -1,3 +1,6 @@
+
+x86dis/x86dis
+
 # Objects and archives
 *.o
 *.lo
