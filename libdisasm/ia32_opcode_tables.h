@@ -55,3 +55,6 @@
 #define idx_DF 54
 #define idx_DFC0 55
 #define idx_0F0F 56
+#define idx_rex_prefixes 57
+#define idx_movxsd 58
+#define idx_660F3A 59

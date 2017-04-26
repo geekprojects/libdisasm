@@ -35,7 +35,11 @@
 #define REG_ESPMSR_INDEX	91	/* 10 * 8 + 10 + 1 */
 #define REG_EIPMSR_INDEX	92	/* 10 * 8 + 11 + 1 */
 
-void ia32_handle_register( x86_reg_t *reg, size_t id );
+#define REG_REX_OFFSET 		97	/* 12 * 8 + 1 */
+#define REG_REX_BYTE_OFFSET 	105	/* 13 * 8 + 1 */
+#define REG_REX_SIMD_OFFSET 	113	/* 14 * 8 + 1 */
+
+void ia32_handle_register( x86_reg_t *reg, int size, int extended, size_t id );
 size_t ia32_true_register_id( size_t id );
 
 #endif

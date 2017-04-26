@@ -16,7 +16,7 @@ int x86_insn_is_valid( x86_insn_t *insn ) {
 	return 0;
 }
 
-uint32_t x86_get_address( x86_insn_t *insn ) {
+uint64_t x86_get_address( x86_insn_t *insn ) {
 	x86_oplist_t *op_lst;
         if (! insn || ! insn->operands ) {
         	return 0;
@@ -27,7 +27,7 @@ uint32_t x86_get_address( x86_insn_t *insn ) {
 			return op_lst->op.data.offset;
 		} else if ( op_lst->op.type == op_absolute ) {
 			if ( op_lst->op.datatype == op_descr16 ) {
-				return (uint32_t)
+				return (uint64_t)
 					op_lst->op.data.absolute.offset.off16;
 			}
 			return op_lst->op.data.absolute.offset.off32;
@@ -135,6 +135,7 @@ unsigned int x86_operand_size( x86_op_t *op ) {
                 case op_dsimd:   return 16;
                 case op_sssimd:  return 4;
                 case op_sdsimd:  return 8;
+                case op_descr64: return 8;
                 case op_descr32: return 6;
                 case op_descr16: return 4;
                 case op_pdescr32: return 6;
@@ -152,7 +153,7 @@ unsigned int x86_operand_size( x86_op_t *op ) {
         return(4);      /* default size */
 }
 
-void x86_set_insn_addr( x86_insn_t *insn, uint32_t addr ) {
+void x86_set_insn_addr( x86_insn_t *insn, uint64_t addr ) {
         if ( insn ) insn->addr = addr;
 }
 

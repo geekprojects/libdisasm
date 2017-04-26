@@ -66,6 +66,6 @@ unsigned int x86_flag_reg(void)        { return ia32_settings.id_flag_reg;  }
 
 /* wrapper function to hide the IA32 register fn */
 void x86_reg_from_id( unsigned int id, x86_reg_t * reg ) {
-	ia32_handle_register( reg, id );
+	ia32_handle_register( reg, 0, 0, id );
 	return;
 }

@@ -354,7 +354,7 @@ op_implicit_list_t *op_implicit_list[] = {
 static void handle_impl_reg( x86_op_t *op, uint32_t val ) {
 	x86_reg_t *reg = &op->data.reg;
 	op->type = op_register;
-	ia32_handle_register( reg, (unsigned int) val );
+	ia32_handle_register( reg, 0, 0, (unsigned int) val );
 	switch (reg->size) {
 		case 1:
 			op->datatype = op_byte; break;

@@ -216,10 +216,13 @@ static void ia32_handle_eflags( x86_insn_t *insn, unsigned int eflags) {
 static void ia32_handle_prefix( x86_insn_t *insn, unsigned int prefixes ) {
 
         insn->prefix = (enum x86_insn_prefix) prefixes & PREFIX_MASK; // >> 20;
+#if 0
+        /* Always return all prefixes */
         if (! (insn->prefix & PREFIX_PRINT_MASK) ) {
 		/* no printable prefixes */
                 insn->prefix = insn_no_prefix;
         }
+#endif
 
         /* concat all prefix strings */
         if ( (unsigned int)insn->prefix & PREFIX_LOCK ) {
@@ -245,7 +248,7 @@ static void reg_32_to_16( x86_op_t *op, x86_insn_t *insn, void *arg ) {
 	if ( op->type == op_register && op->data.reg.size == 4 && 
 	     (op->data.reg.type & reg_gen) ) {
 		/* WORD registers are 8 indices off from DWORD registers */
-		ia32_handle_register( &(op->data.reg), 
+		ia32_handle_register( &(op->data.reg), 0, 0,
 				op->data.reg.id + 8 );
 	}
 }
@@ -400,7 +403,6 @@ size_t ia32_table_lookup( unsigned char *buf, size_t buf_len,
 	/* Note: non-ModR/M tables have a mask value of 0xFF */
 	op &= table_desc->mask;
 
-
 	/* Sparse table trick: check that byte is <= max value */
 	/* Note: full (256-entry) tables have a maxlim of 155 */
 	if ( op > table_desc->maxlim ) {
@@ -416,6 +418,7 @@ size_t ia32_table_lookup( unsigned char *buf, size_t buf_len,
 		   and op is out of range! */
 		return INVALID_INSN;
 	}
+
 	/* adjust op to be an offset from table index 0 */
 	op -= table_desc->minlim;
 
@@ -423,8 +426,161 @@ size_t ia32_table_lookup( unsigned char *buf, size_t buf_len,
 	*raw_insn = &(table_desc->table[op]);
 	//printf("BYTE %X TABLE %d OP %X\n", buf[0], table, op ); 
 
+        if (ia32_settings.options & opt_64_bit && !(*raw_insn)->amd64)
+        {
+            //printf("XXX: ia32_table_lookup: Non 64 bit instruction\n");
+            if ((*raw_insn)->amd64table != 0)
+            {
+                int subtable = (*raw_insn)->amd64table;
+                //printf("XXX: ia32_table_lookup: %p: Looking up amd64 table entry (%d)...\n", buf, (*raw_insn)->amd64table);
+                if (ia32_tables[subtable].type == tbl_extension)
+                {
+                    sub_size = ia32_table_lookup( &buf[1], buf_len - 1, subtable, raw_insn, prefixes);
+                    return sub_size + size;
+                }
+                else
+                {
+                    //raw_insn = raw_insn->amd64insn;
+	            size = ia32_table_lookup(buf, buf_len, subtable, raw_insn, prefixes);
+	            if ( size == INVALID_INSN || size > buf_len || (*raw_insn)->mnem_flag == INS_INVALID )
+                    {
+                        return INVALID_INSN;
+                    }
+                }
+            }
+            else if (buf[0] == 0xc4 || buf[0] == 0xc5)
+            {
+                prefix |= PREFIX_VEX;
+
+                uint8_t vvvv = 0;
+                char l = 0;
+                uint8_t pp = 0;
+                uint8_t mmmmm = 0;
+
+                if (buf[0] == 0xc5)
+                {
+                    // 2 Byte VEX HACK
+                    size = 2;
+                    uint8_t b1 = buf[1];
+                    if (!(b1 & 0x80))
+                    {
+                        prefix |= PREFIX_REX_R;
+                    }
+                    vvvv = (b1 >> 3) & 0xf;
+                    l = (b1 >> 2) & 1;
+                    pp = b1 & 0x3;
+                }
+                else
+                {
+                    // 3 Byte VEX HACK
+                    size = 3;
+                    uint8_t b1 = buf[1];
+                    uint8_t b2 = buf[2];
+
+                    if (!(b1 & 0x80))
+                    {
+                        prefix |= PREFIX_REX_R;
+                    }
+                    if (!(b1 & 0x40))
+                    {
+                        prefix |= PREFIX_REX_X;
+                    }
+                    if (!(b1 & 0x20))
+                    {
+                        prefix |= PREFIX_REX_B;
+                    }
+                    if (!(b2 & 0x80))
+                    {
+                        prefix |= PREFIX_REX_W;
+                    }
+
+                    mmmmm = b1 & 0x1f;
+
+                    vvvv = (b2 >> 3) & 0xf;
+                    l = (b2 >> 2) & 1;
+                    pp = b2 & 0x3;
+
+                    //printf("XXX: ia32_table_lookup: VEX: 3 byte: b1=0x%x, b2=0x%x\n", b1, b2);
+                }
+                //printf("XXX: ia32_table_lookup: VEX: prefix=0x%x, vvvv=%d, mmmmm=%d, l=%d, pp=%d\n", prefix, vvvv, mmmmm, l, pp);
+
+                if (vvvv != 0xf)
+                {
+                    printf("XXX: ia32_table_lookup: VEX: Unsupported register specified: %d\n", vvvv);
+                    //exit(255);
+                }
+
+                int subtable = -1;
+                if (mmmmm != 0)
+                {
+                    switch (mmmmm)
+                    {
+                        case 1:
+                            switch (pp)
+                            {
+                                case 1:
+                                    subtable = idx_660F;
+                                    break;
+                                default:
+                                    printf("XXX: ia32_table_lookup: VEX: Unsupported mmmmm/pp: 0x%x/0x%x\n", mmmmm, pp);
+                                    exit(255);
+                            }
+                            break;
+                        case 3:
+                            switch (pp)
+                            {
+                                case 1:
+                                    subtable = idx_660F3A;
+                                    prefix |= INS_FLAG_PREFIX | PREFIX_OP_SIZE;
+                                    break;
+
+                                default:
+                                    printf("XXX: ia32_table_lookup: VEX: Unsupported mmmmm/pp: 0x%x/0x%x\n", mmmmm, pp);
+                                    exit(255);
+                            }
+
+                            break;
+
+                        default:
+                            printf("XXX: ia32_table_lookup: VEX: Unsupported mmmmm: 0x%x\n", mmmmm);
+                            exit(255);
+                    }
+                }
+                else
+                {
+                    switch (pp)
+                    {
+                        case 1:
+                            subtable = idx_660F;
+                            break;
+                        case 2:
+                            subtable = idx_F30F;
+                            break;
+                        default:
+                            printf("XXX: ia32_table_lookup: VEX: Unsupported pp: 0x%x\n", pp);
+                            exit(255);
+                    }
+                }
+
+                int sub_size = ia32_table_lookup( &buf[size], buf_len - size, subtable, raw_insn, prefixes);
+	        if ( sub_size == INVALID_INSN || sub_size > buf_len - size || (*raw_insn)->mnem_flag == INS_INVALID )
+                {
+                    return INVALID_INSN;
+                }
+                return size + sub_size;
+            }
+            else
+            {
+                // Not a valid 64 bit instruction 
+                printf("XXX: ia32_table_lookup: %p: Not a valid 64 bit instruction\n", buf);
+                exit(255);
+                return INVALID_INSN;
+            }
+            return size;
+        }
+
 	if ( (*raw_insn)->mnem_flag & INS_FLAG_PREFIX ) {
-		prefix = (*raw_insn)->mnem_flag & PREFIX_MASK;
+		prefix |= (*raw_insn)->mnem_flag & PREFIX_MASK;
 	}
 
 
@@ -457,7 +613,7 @@ size_t ia32_table_lookup( unsigned char *buf, size_t buf_len,
 		/* we encountered a multibyte opcode: recurse using the
 		 * table specified in the opcode definition */
 		sub_size = ia32_table_lookup( next, next_len, subtable, 
-				raw_insn, prefixes );
+				raw_insn, prefixes);
 
 		/* SSE/prefix hack: if the original opcode def was a 
 		 * prefix that specified a subtable, and the subtable
@@ -482,6 +638,11 @@ size_t ia32_table_lookup( unsigned char *buf, size_t buf_len,
 		}
 	} else if ( prefix ) {
 		recurse_table = 1;
+                if (table == idx_rex_prefixes)
+                {
+                    /* HACK! */
+                    table = idx_Main;
+                }
 	}
 
 	/* by default, we assume that we have the opcode definition,
@@ -491,10 +652,13 @@ size_t ia32_table_lookup( unsigned char *buf, size_t buf_len,
 		/* this must have been a prefix: use the same table for
 		 * lookup of the next byte */
 		sub_size = ia32_table_lookup( &buf[1], buf_len - 1, table, 
-				raw_insn, prefixes );
+				raw_insn, prefixes);
 
 		// short-circuit lookup on invalid insn
-		if (sub_size == INVALID_INSN) return INVALID_INSN;
+		if (sub_size == INVALID_INSN)
+                {
+                    return INVALID_INSN;
+                }
 
 		/* a bit of a hack for branch hints */
 		if ( prefix & BRANCH_HINT_MASK ) {
@@ -545,7 +709,7 @@ static size_t handle_insn_suffix( unsigned char *buf, size_t buf_len,
 
 	table_desc = &ia32_tables[raw_insn->table]; 
 	size = ia32_table_lookup( buf, buf_len, raw_insn->table, &sfx_insn,
-				 &prefixes );
+				 &prefixes);
 	if (size == INVALID_INSN || sfx_insn->mnem_flag == INS_INVALID ) {
 		return 0;
 	}

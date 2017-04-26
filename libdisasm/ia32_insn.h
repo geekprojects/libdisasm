@@ -39,7 +39,7 @@ size_t ia32_disasm_addr( unsigned char * buf, size_t buf_len,
 
 /* --------------------------------------------------------- Table Lookup */
 /* IA32 Instruction defintion for ia32_opcodes.c */
-typedef struct {
+typedef struct ia32_insn {
    unsigned int table;          /* escape to this sub-table */
    unsigned int mnem_flag;      /* Flags referring to mnemonic */
    unsigned int notes;          /* Notes for this instruction */
@@ -52,6 +52,8 @@ typedef struct {
    int32_t aux;
    unsigned int flags_effected;
    unsigned int implicit_ops;	/* implicit operands */
+   int amd64;
+   int amd64table;
 } ia32_insn_t;
 
 
@@ -76,8 +78,19 @@ typedef struct {
 #define PREFIX_NOTTAKEN   0x2000	/* branch not taken */
 #define PREFIX_REG_MASK   0x0F00
 #define BRANCH_HINT_MASK  0x3000 
-#define PREFIX_PRINT_MASK 0x000F	/* printable prefixes */
-#define PREFIX_MASK       0xFFFF
+
+#define PREFIX_REX        0x010000
+#define PREFIX_REX_B      0x030000
+#define PREFIX_REX_X      0x050000
+#define PREFIX_REX_R      0x090000
+#define PREFIX_REX_W      0x110000
+
+#define PREFIX_VEX        0x200000
+
+#define PREFIX_PRINT_MASK 0xFF000F	/* printable prefixes */
+#define PREFIX_MASK       0xFFFFFF
+
+#define PREFIX_HAS_REX(_prefix, _rex) (((_prefix) & (_rex)) == _rex)
 
 /* ---------------------------------------------------------- CPU Type */
 
@@ -94,6 +107,7 @@ typedef struct {
 #define cpu_K6		 0x0010
 #define cpu_K7		 0x0020
 #define cpu_ATHLON	 0x0030
+#define cpu_AMD64	 0x0100
 #define CPU_MODEL_MASK	 0xFFFF
 #define CPU_MODEL(cpu)	 (cpu & CPU_MODEL_MASK)
 /* intel instruction subsets */
@@ -106,6 +120,7 @@ typedef struct {
 #define isa_SSE3	 0x70000	/* SSE 3 */
 #define isa_3DNOW	 0x80000	/* AMD 3d Now */
 #define isa_SYS		 0x90000	/* System Instructions */
+#define isa_AVX		 0xA0000	/* System Instructions */
 #define ISA_SUBSET_MASK	 0xFFFF0000
 #define ISA_SUBSET(isa)	(isa & ISA_SUBSET_MASK)
 
@@ -241,6 +256,7 @@ typedef struct {		/* Assembly instruction tables */
 
 /* Flags */
 #define OP_SIGNED    0x010   	/* operand is signed */
+#define OP_IMM64    0x020   	/* operand is 64 bits if REX.W is specified */
 
 #define OP_FLAG_MASK  0x0F0  /* mods are NOT mutually exclusive */
 #define OP_FLAGS( type )        (type & OP_FLAG_MASK)
@@ -403,6 +419,7 @@ typedef struct {		/* Assembly instruction tables */
 #define INS_IN		(INS_SYSTEM | 0x02)	/* input form port */
 #define INS_OUT		(INS_SYSTEM | 0x03)	/* output to port */
 #define INS_CPUID	(INS_SYSTEM | 0x04)	/* identify cpu */
+#define INS_SYSCALL	(INS_SYSTEM | 0x05)	/* system call */
 
 /* INS_OTHER */
 #define INS_NOP		(INS_OTHER | 0x01)

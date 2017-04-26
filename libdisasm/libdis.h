@@ -42,21 +42,21 @@ enum x86_report_codes {
                                    attempt to determine what section of the
                                    binary it is in, then disassemble the
                                    address from the bytes in that section.
-                                        data: uint32_t rva */
+                                        data: uint64_t rva */
         report_insn_bounds,     /* INSTRUCTION OUT OF BOUNDS: The disassembler
                                    could not disassemble the instruction as
                                    the instruction would require bytes beyond
                                    the end of the current buffer. This usually
                                    indicated garbage bytes at the end of a
                                    buffer, or an incorrectly-sized buffer.
-                                        data: uint32_t rva */
+                                        data: uint64_t rva */
         report_invalid_insn,    /* INVALID INSTRUCTION: The disassembler could
                                    not disassemble the instruction as it has an
                                    invalid combination of opcodes and operands.
                                    This will stop automated disassembly; the
                                    application can restart the disassembly
                                    after the invalid instruction.
-                                        data: uint32_t rva */
+                                        data: uint64_t rva */
         report_unknown
 };
 
@@ -77,6 +77,7 @@ enum x86_options {		/* these can be ORed together */
         opt_ignore_nulls=1,     /* ignore sequences of > 4 NULL bytes */
         opt_16_bit=2,           /* 16-bit/DOS disassembly */
         opt_att_mnemonics=4,    /* use AT&T syntax names for alternate opcode mnemonics */
+        opt_64_bit=8,    /* 64 bit disassembly */
 };
 
 /* management routines */
@@ -152,6 +153,7 @@ typedef struct {
 	union {
 		unsigned short	off16;	/* loaded directly into IP */
 		uint32_t		off32;	/* loaded directly into EIP */
+		uint64_t		off64;	/* loaded directly into RIP */
 	} offset;	
 } x86_absolute_t;
 
@@ -200,6 +202,7 @@ enum x86_op_datatype {          /* these use Intel's lame terminology */
 	op_fpustate32 = 23,	/* 108 byte FPU state (env & reg stack) */
 	op_fpregset = 24,	/* 512 bytes: register set */
 	op_fpreg = 25,		/* FPU register */
+	op_descr64 = 26,	/* 4 byte Intel descriptor 2:2 */
     op_none = 0xFF,     /* operand without a datatype (INVLPG) */
 };
 
@@ -243,11 +246,11 @@ typedef struct {
                 char            sbyte;
                 short           sword;
                 int32_t         sdword;
-                qword_t         sqword;
+                int64_t         sqword;
                 unsigned char   byte;
                 unsigned short  word;
                 uint32_t        dword;
-                qword_t         qword;
+                uint64_t        qword;
                 float           sreal;
                 double          dreal;
                 /* misc large/non-native types */
@@ -257,7 +260,7 @@ typedef struct {
                 unsigned char   simd[16];
                 unsigned char   fpuenv[28];
                 /* offset from segment */
-                uint32_t        offset;
+                uint64_t        offset;
                 /* ID of CPU register */
                 x86_reg_t       reg;
                 /* offsets from current insn */
@@ -482,15 +485,18 @@ enum x86_insn_prefix {
         insn_no_prefix = 0,
         insn_rep_zero = 1,	/* REPZ and REPE */
         insn_rep_notzero = 2,	/* REPNZ and REPNZ */
-        insn_lock = 4		/* LOCK: */
+        insn_lock = 4,		/* LOCK: */
+        insn_address_size = 0x20,
+        insn_fs = 0x500,
+        insn_gs = 0x600
 };
 
 /* TODO: maybe provide insn_new/free(), and have disasm return new insn_t */
 /* x86_insn_t : an X86 instruction */
 typedef struct {
         /* information about the instruction */
-        uint32_t addr;             /* load address */
-        uint32_t offset;           /* offset into file/buffer */
+        uint64_t addr;             /* load address */
+        uint64_t offset;           /* offset into file/buffer */
         enum x86_insn_group group;      /* meta-type, e.g. INS_EXEC */
         enum x86_insn_type type;        /* type, e.g. INS_BRANCH */
 	enum x86_insn_note note;	/* note, e.g. RING0 */
@@ -507,7 +513,7 @@ typedef struct {
         enum x86_flag_status flags_tested;
 	/* stack */
 	unsigned char stack_mod;	/* 0 or 1 : is the stack modified? */
-	int32_t stack_mod_val;		/* val stack is modified by if known */
+	int64_t stack_mod_val;		/* val stack is modified by if known */
 
         /* the instruction proper */
         enum x86_insn_prefix prefix;	/* prefixes ORed together */
@@ -547,7 +553,7 @@ typedef void (*DISASM_CALLBACK)( x86_insn_t *insn, void * arg );
  *      operand, or if the address has already been disassembled, this routine
  *      should return -1; in all other cases the RVA to be disassembled next
  *      should be returned. */
-typedef int32_t (*DISASM_RESOLVER)( x86_op_t *op, x86_insn_t * current_insn,
+typedef int64_t (*DISASM_RESOLVER)( x86_op_t *op, x86_insn_t * current_insn,
 				 void *arg );
 
 
@@ -563,7 +569,7 @@ typedef int32_t (*DISASM_RESOLVER)( x86_op_t *op, x86_insn_t * current_insn,
  *      insn    : Structure to fill with disassembled instruction
  */
 unsigned int x86_disasm( unsigned char *buf, unsigned int buf_len,
-                	 uint32_t buf_rva, unsigned int offset,
+                	 uint64_t buf_rva, unsigned int offset,
                 	 x86_insn_t * insn );
 
 /* x86_disasm_range: Sequential disassembly of a range of bytes in a buffer,
@@ -579,7 +585,7 @@ unsigned int x86_disasm( unsigned char *buf, unsigned int buf_len,
  *      func    : Callback function to invoke (may be NULL)
  *      arg     : Arbitrary data to pass to callback (may be NULL)
  */
-unsigned int x86_disasm_range( unsigned char *buf, uint32_t buf_rva,
+unsigned int x86_disasm_range( unsigned char *buf, uint64_t buf_rva,
 	                       unsigned int offset, unsigned int len,
 	                       DISASM_CALLBACK func, void *arg );
 
@@ -599,7 +605,7 @@ unsigned int x86_disasm_range( unsigned char *buf, uint32_t buf_rva,
  *      r_arg	: Arbitrary data to pass to resolver (may be NULL)
  */
 unsigned int x86_disasm_forward( unsigned char *buf, unsigned int buf_len,
-	                         uint32_t buf_rva, unsigned int offset,
+	                         uint64_t buf_rva, unsigned int offset,
 	                         DISASM_CALLBACK func, void *arg,
 	                         DISASM_RESOLVER resolver, void *r_arg );
 
@@ -665,7 +671,7 @@ unsigned int x86_operand_size( x86_op_t *op );
 
 /* Get Address: return the value of an offset operand, or the offset of
  * a segment:offset absolute address */
-uint32_t x86_get_address( x86_insn_t *insn );
+uint64_t x86_get_address( x86_insn_t *insn );
 
 /* Get Relative Offset: return as a sign-extended int32_t the near or far
  * relative offset operand, or 0 if there is none. There can be only one
@@ -695,7 +701,7 @@ unsigned char * x86_get_raw_imm( x86_insn_t *insn );
 
 /* More accessor fuctions, this time for user-defined info... */
 /* set the address (usually RVA) of the insn */
-void x86_set_insn_addr( x86_insn_t *insn, uint32_t addr );
+void x86_set_insn_addr( x86_insn_t *insn, uint64_t addr );
 
 /* set the offset (usually offset into file) of the insn */
 void x86_set_insn_offset( x86_insn_t *insn, unsigned int offset );

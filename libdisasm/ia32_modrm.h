@@ -8,6 +8,6 @@ size_t ia32_modrm_decode( unsigned char *buf, unsigned int buf_len,
 			    x86_op_t *op, x86_insn_t *insn,
 			    size_t gen_regs );
 
-void ia32_reg_decode( unsigned char byte, x86_op_t *op, size_t gen_regs );
+void ia32_reg_decode( unsigned char byte, x86_op_t *op, size_t gen_regs, x86_insn_t *insn);
 
 #endif

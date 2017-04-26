@@ -548,6 +548,7 @@ static void do_help(char *name) {
 		"\t-d name       : display syntax description as header\n"
 		"\t-p num        : memory map page size (default 512K)\n"
 		"\t-L            : legacy (16-bit) mode\n"
+		"\t-A            : AMD 64 (64-bit) mode\n"
 		"\t-N            : no NULLs (ignore sequences of > 4 NULLs)\n"
 		"\t-v            : display version information\n"
 		"\t-h            : display this help screen\n"
@@ -795,6 +796,10 @@ int main( int argc, char **argv ) {
 			case 'L':
 			/* -L : use legacy 16-bit mode */
 				options = options | opt_16_bit;
+				break;
+			case 'A':
+			/* -A : use AMD 64 64-bit mode */
+				options = options | opt_64_bit;
 				break;
 			case 'N':
 			/* -N : use IGNORE NULLS mode */

@@ -14,7 +14,7 @@
 #endif
 
 unsigned int x86_disasm( unsigned char *buf, unsigned int buf_len,
-                uint32_t buf_rva, unsigned int offset,
+                uint64_t buf_rva, unsigned int offset,
                 x86_insn_t *insn ){
         int len, size;
 	unsigned char bytes[MAX_INSTRUCTION_SIZE];
@@ -70,7 +70,7 @@ unsigned int x86_disasm( unsigned char *buf, unsigned int buf_len,
         return size;
 }
 
-unsigned int x86_disasm_range( unsigned char *buf, uint32_t buf_rva,
+unsigned int x86_disasm_range( unsigned char *buf, uint64_t buf_rva,
                       unsigned int offset, unsigned int len,
                       DISASM_CALLBACK func, void *arg ) {
         x86_insn_t insn;
@@ -112,8 +112,8 @@ static inline int insn_doesnt_return( x86_insn_t *insn ) {
         return( (insn->type == insn_jmp || insn->type == insn_return) ? 1: 0 );
 }
 
-static int32_t internal_resolver( x86_op_t *op, x86_insn_t *insn ){
-        int32_t next_addr = -1;
+static int64_t internal_resolver( x86_op_t *op, x86_insn_t *insn ){
+        int64_t next_addr = -1;
         if ( x86_optype_is_address(op->type) ) {
                 next_addr = op->data.sdword;
         } else if ( op->type == op_relative_near ) {
@@ -125,13 +125,13 @@ static int32_t internal_resolver( x86_op_t *op, x86_insn_t *insn ){
 }
 
 unsigned int x86_disasm_forward( unsigned char *buf, unsigned int buf_len,
-                        uint32_t buf_rva, unsigned int offset,
+                        uint64_t buf_rva, unsigned int offset,
                         DISASM_CALLBACK func, void *arg,
                         DISASM_RESOLVER resolver, void *r_arg ){
         x86_insn_t insn;
         x86_op_t *op;
-        int32_t next_addr;
-        uint32_t next_offset;
+        int64_t next_addr;
+        uint64_t next_offset;
         unsigned int size, count = 0, bytes = 0, cont = 1;
 
         while ( cont && bytes < buf_len ) {
@@ -165,7 +165,7 @@ unsigned int x86_disasm_forward( unsigned char *buf, unsigned int buf_len,
                         if (next_addr != -1 ) {
                                 next_offset = next_addr - buf_rva;
                                 /* if offset is in this buffer... */
-                                if ( next_offset >= 0 &&
+                                if ( (signed)next_offset >= 0 &&
                                      next_offset < buf_len ) {
                                         /* go ahead and disassemble */
                                         count += x86_disasm_forward( buf,

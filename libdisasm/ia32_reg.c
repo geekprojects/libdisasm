@@ -1,12 +1,14 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "ia32_reg.h"
 #include "ia32_insn.h"
 
-#define NUM_X86_REGS	92
+#define NUM_X86_REGS	113
 
 /* register sizes */
+#define REG_QWORD_SIZE 8
 #define REG_DWORD_SIZE 4
 #define REG_WORD_SIZE 2
 #define REG_BYTE_SIZE 1
@@ -189,27 +191,82 @@ static struct {
 	{ REG_DWORD_SIZE, reg_sys, 0, "esp_msr" },
 	/* REG_EIPMSR_INDEX : SYSENTER_EIP_MSR : 92 */
 	{ REG_DWORD_SIZE, reg_sys, 0, "eip_msr" },
+
+	/* PADDING */
+	{ 0 },
+	{ 0 },
+	{ 0 },
+	{ 0 },
+
+	/* REG_REX_OFFSET : 97 */
+	{ REG_QWORD_SIZE, reg_gen , 0, "r8" },
+	{ REG_QWORD_SIZE, reg_gen , 0, "r9" },
+	{ REG_QWORD_SIZE, reg_gen, 0, "r10" },
+	{ REG_QWORD_SIZE, reg_gen, 0, "r11" },
+	{ REG_QWORD_SIZE, reg_gen, 0, "r12" },
+	{ REG_QWORD_SIZE, reg_gen, 0, "r13" },
+	{ REG_QWORD_SIZE, reg_gen, 0, "r14" },
+	{ REG_QWORD_SIZE, reg_gen, 0, "r15" },
+
+	/* REG_REX_OFFSET : 105 */
+	{ REG_BYTE_SIZE, reg_gen , 0, "r8b" },
+	{ REG_BYTE_SIZE, reg_gen , 0, "rb9" },
+	{ REG_BYTE_SIZE, reg_gen, 0, "r10b" },
+	{ REG_BYTE_SIZE, reg_gen, 0, "r11b" },
+	{ REG_BYTE_SIZE, reg_gen, 0, "r12b" },
+	{ REG_BYTE_SIZE, reg_gen, 0, "r13b" },
+	{ REG_BYTE_SIZE, reg_gen, 0, "r14b" },
+	{ REG_BYTE_SIZE, reg_gen, 0, "r15b" },
+
+	/* REG_REX_SIMD_OFFSET : 113 */
+	{ REG_QWORD_SIZE, reg_simd , 0, "xmm8" },
+	{ REG_QWORD_SIZE, reg_simd , 0, "xmm9" },
+	{ REG_QWORD_SIZE, reg_simd, 0, "xmm10" },
+	{ REG_QWORD_SIZE, reg_simd, 0, "xmm11" },
+	{ REG_QWORD_SIZE, reg_simd, 0, "xmm12" },
+	{ REG_QWORD_SIZE, reg_simd, 0, "xmm13" },
+	{ REG_QWORD_SIZE, reg_simd, 0, "xmm14" },
+	{ REG_QWORD_SIZE, reg_simd, 0, "xmm15" },
 	{ 0 }
  };
-
 
 static size_t sz_regtable = NUM_X86_REGS + 1;
 
 
-void ia32_handle_register( x86_reg_t *reg, size_t id ) {
+void ia32_handle_register( x86_reg_t *reg, int size, int extended, size_t id ) {
 	unsigned int alias;
 	if (! id || id > sz_regtable ) {
 		return;
 	}
 
 	memset( reg, 0, sizeof(x86_reg_t) );
+        if (extended)
+        {
+            if (id < REG_WORD_OFFSET)
+            {
+                id += REG_REX_OFFSET - 1;
+            }
+            else if (id >= REG_BYTE_OFFSET && id < REG_MMX_OFFSET)
+            {
+                id += REG_REX_BYTE_OFFSET - 1;
+            }
+            else if (id >= REG_MMX_OFFSET && id < REG_MMX_OFFSET + 8)
+            {
+                id += REG_REX_SIMD_OFFSET - 1;
+            }
+            else
+            {
+                printf("ia32_handle_register: Unable to extend register: %d\n", id);
+            }
+        }
 
         strncpy( reg->name, ia32_reg_table[id].mnemonic, MAX_REGNAME );
 
         reg->type = ia32_reg_table[id].type;
         reg->size = ia32_reg_table[id].size;
 
-	alias = ia32_reg_table[id].alias;
+        alias = ia32_reg_table[id].alias;
+
 	if ( alias ) {
 		reg->alias = ia32_reg_aliases[alias].alias;
 		reg->shift = ia32_reg_aliases[alias].shift;

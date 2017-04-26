@@ -7,9 +7,11 @@
 #include "ia32_operand.h"
 #include "ia32_modrm.h"
 #include "ia32_reg.h"
+#include "ia32_settings.h"
 #include "x86_imm.h"
 #include "x86_operand_list.h"
 
+extern ia32_settings_t ia32_settings;
 
 
 /* apply segment override to memory operand in insn */
@@ -39,7 +41,7 @@ static size_t decode_operand_value( unsigned char *buf, size_t buf_len,
 			    x86_op_t *op, x86_insn_t *insn, 
 			    unsigned int addr_meth, size_t op_size, 
 			    unsigned int op_value, unsigned char modrm, 
-			    size_t gen_regs ) {
+			    size_t gen_regs, unsigned int raw_flags ) {
 	size_t size = 0;
 
 	/* ++ Do Operand Addressing Method / Decode operand ++ */
@@ -87,25 +89,25 @@ static size_t decode_operand_value( unsigned char *buf, size_t buf_len,
 
 		/* MODRM -- reg operand. does not effect size! */
 		case ADDRMETH_C:	/* ModR/M reg == control reg */
-			ia32_reg_decode( modrm, op, REG_CTRL_OFFSET );
+			ia32_reg_decode( modrm, op, REG_CTRL_OFFSET, insn);
 			break;
 		case ADDRMETH_D:	/* ModR/M reg == debug reg */
-			ia32_reg_decode( modrm, op, REG_DEBUG_OFFSET );
+			ia32_reg_decode( modrm, op, REG_DEBUG_OFFSET, insn);
 			break;
 		case ADDRMETH_G:	/* ModR/M reg == gen-purpose reg */
-			ia32_reg_decode( modrm, op, gen_regs );
+			ia32_reg_decode( modrm, op, gen_regs, insn);
 			break;
 		case ADDRMETH_P:	/* ModR/M reg == qword MMX reg */
-			ia32_reg_decode( modrm, op, REG_MMX_OFFSET );
+			ia32_reg_decode( modrm, op, REG_MMX_OFFSET, insn);
 			break;
 		case ADDRMETH_S:	/* ModR/M reg == segment reg */
-			ia32_reg_decode( modrm, op, REG_SEG_OFFSET );
+			ia32_reg_decode( modrm, op, REG_SEG_OFFSET, insn);
 			break;
 		case ADDRMETH_T:	/* ModR/M reg == test reg */
-			ia32_reg_decode( modrm, op, REG_TEST_OFFSET );
+			ia32_reg_decode( modrm, op, REG_TEST_OFFSET, insn);
 			break;
 		case ADDRMETH_V:	/* ModR/M reg == SIMD reg */
-			ia32_reg_decode( modrm, op, REG_SIMD_OFFSET );
+			ia32_reg_decode( modrm, op, REG_SIMD_OFFSET, insn);
 			break;
 
 		/* No MODRM : note these set operand type explicitly */
@@ -173,13 +175,13 @@ static size_t decode_operand_value( unsigned char *buf, size_t buf_len,
 		case ADDRMETH_F:	/* EFLAGS register */
 			op->type = op_register;
 			op->flags |= op_hardcode;
-			ia32_handle_register( &op->data.reg, REG_FLAGS_INDEX );
+			ia32_handle_register( &op->data.reg, 0, 0, REG_FLAGS_INDEX );
 			break;
 		case ADDRMETH_X:	/* Memory addressed by DS:SI [string] */
 			op->type = op_expression;
 			op->flags |= op_hardcode;
 			op->flags |= op_ds_seg | op_pointer | op_string;
-			ia32_handle_register( &op->data.expression.base, 
+			ia32_handle_register( &op->data.expression.base, 0, 0,
 					     REG_DWORD_OFFSET + 6 );
 			break;
 		case ADDRMETH_Y:	/* Memory addressed by ES:DI [string] */
@@ -187,30 +189,35 @@ static size_t decode_operand_value( unsigned char *buf, size_t buf_len,
 			op->flags |= op_hardcode;
 			op->flags |= op_es_seg | op_pointer | op_string;
 			ia32_handle_register( &op->data.expression.base, 
+					     0, 0,
 					     REG_DWORD_OFFSET + 7 );
 			break;
 		case ADDRMETH_RR:	/* Gen Register hard-coded in opcode */
 			op->type = op_register;
 			op->flags |= op_hardcode;
 			ia32_handle_register( &op->data.reg, 
+					     0, PREFIX_HAS_REX(insn->prefix, PREFIX_REX_B),
 						op_value + gen_regs );
 			break;
 		case ADDRMETH_RS:	/* Seg Register hard-coded in opcode */
 			op->type = op_register;
 			op->flags |= op_hardcode;
 			ia32_handle_register( &op->data.reg, 
+					     0, 0,
 						op_value + REG_SEG_OFFSET );
 			break;
 		case ADDRMETH_RF:	/* FPU Register hard-coded in opcode */
 			op->type = op_register;
 			op->flags |= op_hardcode;
 			ia32_handle_register( &op->data.reg, 
+					     0, 0,
 						op_value + REG_FPU_OFFSET );
 			break;
 		case ADDRMETH_RT:	/* TST Register hard-coded in opcode */
 			op->type = op_register;
 			op->flags |= op_hardcode;
 			ia32_handle_register( &op->data.reg, 
+					     0, 0,
 						op_value + REG_TEST_OFFSET );
 			break;
 		case ADDRMETH_II:	/* Immediate hard-coded in opcode */
@@ -230,7 +237,7 @@ static size_t decode_operand_value( unsigned char *buf, size_t buf_len,
 }
 
 static size_t decode_operand_size( unsigned int op_type, x86_insn_t *insn, 
-				   x86_op_t *op ){
+				   x86_op_t *op, unsigned int raw_flags ){
 	size_t size;
 
 	/* ++ Do Operand Type ++ */
@@ -254,15 +261,46 @@ static size_t decode_operand_size( unsigned int op_type, x86_insn_t *insn,
 			op->datatype = (size == 4) ? op_bounds32 : op_bounds16;
 			break;
 		case OPTYPE_v:	/* word or dword [op size attr] */
-			size = (insn->op_size == 4) ? 4 : 2;
-			op->datatype = (size == 4) ? op_dword : op_word;
+if (insn->op_size == 4)
+{
+if (raw_flags & OP_IMM64 && PREFIX_HAS_REX(insn->prefix, PREFIX_REX_W))
+{
+//printf("XXX: OPTYPE_v: -> PREFIX_REX_W\n");
+size = 8;
+op->datatype = op_qword;
+}
+else
+{
+size = 4;
+op->datatype = op_dword;
+}
+}
+else
+{
+size = 2;
+op->datatype = op_word;
+}
 			break;
 		case OPTYPE_p:	/* 32/48-bit ptr [op size attr] */
 			/* technically these flags are not accurate: the
 			 * value s a 16:16 pointer or a 16:32 pointer, where
 			 * the first '16' is a segment */
 			size = (insn->addr_size == 4) ? 6 : 4;
-			op->datatype = (size == 4) ? op_descr32 : op_descr16;
+if (size == 4)
+{
+if (ia32_settings.options & opt_64_bit)
+{
+			op->datatype = op_descr64;
+}
+else
+{
+			op->datatype = op_descr32;
+}
+}
+else
+{
+			op->datatype = op_descr16;
+}
 			break;
 		case OPTYPE_b:	/* byte, ignore op-size */
 			size = 1;
@@ -400,8 +438,10 @@ size_t ia32_decode_operand( unsigned char *buf, size_t buf_len,
 	op->access = (enum x86_op_access) OP_PERM(raw_flags);
 	op->flags = (enum x86_op_flags) (OP_FLAGS(raw_flags) >> 12);
 
+//printf("XXX: ia32_decode_operand: raw_flags=0x%x, op->flags=0x%x\n", raw_flags, op->flags);
+
 	/* Get size (for decoding)  and datatype of operand */
-	op_size = decode_operand_size(op_type, insn, op);
+	op_size = decode_operand_size(op_type, insn, op, raw_flags);
 
 	/* override default register set based on Operand Type */
 	/* this allows mixing of 8, 16, and 32 bit regs in insn */
@@ -414,7 +454,7 @@ size_t ia32_decode_operand( unsigned char *buf, size_t buf_len,
 	}
 
 	size = decode_operand_value( buf, buf_len, op, insn, addr_meth, 
-				      op_size, raw_op, modrm, gen_regs );
+				      op_size, raw_op, modrm, gen_regs, raw_flags );
 
 	/* if operand is an address, apply any segment override prefixes */
 	if ( op->type == op_expression || op->type == op_offset ) {

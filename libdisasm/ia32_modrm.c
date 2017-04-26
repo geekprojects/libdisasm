@@ -1,6 +1,9 @@
 #include "ia32_modrm.h"
 #include "ia32_reg.h"
+#include "ia32_settings.h"
 #include "x86_imm.h"
+
+extern ia32_settings_t ia32_settings;
 
 /* NOTE: when decoding ModR/M and SIB, we have to add 1 to all register
  * values obtained from decoding the ModR/M or SIB byte, since they
@@ -100,7 +103,7 @@ static void byte_decode(unsigned char b, struct modRM_byte *modrm) {
 
 
 static size_t sib_decode( unsigned char *buf, size_t buf_len, x86_ea_t *ea, 
-			  unsigned int mod ) {
+			  unsigned int mod, int prefix ) {
 	/* set Address Expression fields (scale, index, base, disp) 
 	 * according to the contents of the SIB byte.
 	 *  b points to the SIB byte in the instruction-stream buffer; the
@@ -115,7 +118,7 @@ static size_t sib_decode( unsigned char *buf, size_t buf_len, x86_ea_t *ea,
 
 	byte_decode( *buf, (struct modRM_byte *)(void*)&sib );  /* get bit-fields */
 
-	if ( sib.base == SIB_BASE_EBP && ! mod ) {  /* if base == 101 (ebp) */
+	if ( sib.base == SIB_BASE_EBP && ! mod && !PREFIX_HAS_REX(prefix, PREFIX_REX_B) ) {  /* if base == 101 (ebp) */
 	    /* IF BASE == EBP, deal with exception */
 		/* IF (ModR/M did not create a Disp */
 		/* ... create a 32-bit Displacement */
@@ -126,7 +129,7 @@ static size_t sib_decode( unsigned char *buf, size_t buf_len, x86_ea_t *ea,
 
 	} else {
 		/* ELSE BASE refers to a General Register */
-		ia32_handle_register( &ea->base, sib.base + 1 );
+		ia32_handle_register( &ea->base, 0, PREFIX_HAS_REX(prefix, PREFIX_REX_B), sib.base + 1 );
 	}
 
 	/* set scale to 1, 2, 4, 8 */
@@ -134,7 +137,7 @@ static size_t sib_decode( unsigned char *buf, size_t buf_len, x86_ea_t *ea,
 
 	if (sib.index != SIB_INDEX_NONE) {
 		/* IF INDEX is not 'ESP' (100) */
-		ia32_handle_register( &ea->index, sib.index + 1 );
+		ia32_handle_register( &ea->index, 0, PREFIX_HAS_REX(prefix, PREFIX_REX_X), sib.index + 1 );
 	}
 
 	return (size);		/* return number of bytes processed */
@@ -148,37 +151,37 @@ static size_t modrm_decode16( unsigned char *buf, unsigned int buf_len,
 
 	switch( modrm->rm ) {
 		case MOD16_RM_BXSI:
-			ia32_handle_register(&ea->base, REG_WORD_OFFSET + 3);
-			ia32_handle_register(&ea->index, REG_WORD_OFFSET + 6);
+			ia32_handle_register(&ea->base, 0, 0, REG_WORD_OFFSET + 3);
+			ia32_handle_register(&ea->index, 0, 0, REG_WORD_OFFSET + 6);
 			break;
 		case MOD16_RM_BXDI:
-			ia32_handle_register(&ea->base, REG_WORD_OFFSET + 3);
-			ia32_handle_register(&ea->index, REG_WORD_OFFSET + 7);
+			ia32_handle_register(&ea->base, 0, 0, REG_WORD_OFFSET + 3);
+			ia32_handle_register(&ea->index, 0, 0, REG_WORD_OFFSET + 7);
 		case MOD16_RM_BPSI:
 			op->flags |= op_ss_seg;
-			ia32_handle_register(&ea->base, REG_WORD_OFFSET + 5);
-			ia32_handle_register(&ea->index, REG_WORD_OFFSET + 6);
+			ia32_handle_register(&ea->base, 0, 0, REG_WORD_OFFSET + 5);
+			ia32_handle_register(&ea->index, 0, 0, REG_WORD_OFFSET + 6);
 			break;
 		case MOD16_RM_BPDI:
 			op->flags |= op_ss_seg;
-			ia32_handle_register(&ea->base, REG_WORD_OFFSET + 5);
-			ia32_handle_register(&ea->index, REG_WORD_OFFSET + 7);
+			ia32_handle_register(&ea->base, 0, 0, REG_WORD_OFFSET + 5);
+			ia32_handle_register(&ea->index, 0, 0, REG_WORD_OFFSET + 7);
 			break;
 		case MOD16_RM_SI:
-			ia32_handle_register(&ea->base, REG_WORD_OFFSET + 6);
+			ia32_handle_register(&ea->base, 0, 0, REG_WORD_OFFSET + 6);
 			break;
 		case MOD16_RM_DI:
-			ia32_handle_register(&ea->base, REG_WORD_OFFSET + 7);
+			ia32_handle_register(&ea->base, 0, 0, REG_WORD_OFFSET + 7);
 			break;
 		case MOD16_RM_BP:
 			if ( modrm->mod != MOD16_MOD_NODISP ) {
 				op->flags |= op_ss_seg;
-				ia32_handle_register(&ea->base, 
+				ia32_handle_register(&ea->base, 0, 0,
 						     REG_WORD_OFFSET + 5);
 			}
 			break;
 		case MOD16_RM_BX:
-			ia32_handle_register(&ea->base, REG_WORD_OFFSET + 3);
+			ia32_handle_register(&ea->base, 0, 0, REG_WORD_OFFSET + 3);
 			break;
 	}
 
@@ -215,13 +218,12 @@ size_t ia32_modrm_decode( unsigned char *buf, unsigned int buf_len,
 	size_t size = 1;	/* # of bytes decoded [1 for modR/M byte] */
 	x86_ea_t * ea;
 
-
 	byte_decode(*buf, &modrm);	/* get bitfields */
 
 	/* first, handle the case where the mod field is a register only */
 	if ( modrm.mod == MODRM_MOD_NOEA ) {
 		op->type = op_register;
-		ia32_handle_register(&op->data.reg, modrm.rm + gen_regs);
+		ia32_handle_register(&op->data.reg, 0, PREFIX_HAS_REX(insn->prefix, PREFIX_REX_B), modrm.rm + gen_regs);
                 /* increase insn size by 1 for modrm byte */
  		return 1;
  	}
@@ -252,28 +254,32 @@ size_t ia32_modrm_decode( unsigned char *buf, unsigned int buf_len,
 			ea->disp_sign = (ea->disp < 0) ? 1 : 0;
 			size += 4;	/* add sizeof disp to count */
 
+		        if (ia32_settings.options & opt_64_bit) {
+			    ia32_handle_register( &ea->base, 0, 0, REG_EIP_INDEX );
+                        }
+
 		} else if (modrm.rm == MODRM_RM_SIB) {	/* if r/m == 100 */
 			/* ELSE IF an SIB byte is present */
 			/* TODO: check for 0 retval */
-			size += sib_decode( buf, buf_len, ea, modrm.mod);
+			size += sib_decode( buf, buf_len, ea, modrm.mod, insn->prefix);
 			/* move to byte after SIB for displacement */
 			++buf;
 			--buf_len;
 		} else {	/* modR/M specifies base register */
 			/* ELSE RM encodes a general register */
-			ia32_handle_register( &ea->base, modrm.rm + 1 );
+			ia32_handle_register( &ea->base, 0, PREFIX_HAS_REX(insn->prefix, PREFIX_REX_B), modrm.rm + 1 );
 		}
 	} else { 					/* mod is 01 or 10 */
 		if (modrm.rm == MODRM_RM_SIB) {	/* rm == 100 */
 			/* IF base is an AddrExpr specified by an SIB byte */
 			/* TODO: check for 0 retval */
-			size += sib_decode( buf, buf_len, ea, modrm.mod);
+			size += sib_decode( buf, buf_len, ea, modrm.mod, insn->prefix);
 			/* move to byte after SIB for displacement */
 			++buf;
 			--buf_len;
 		} else {
 			/* ELSE base is a general register */
-			ia32_handle_register( &ea->base, modrm.rm + 1 );
+			ia32_handle_register( &ea->base, 0, PREFIX_HAS_REX(insn->prefix, PREFIX_REX_B), modrm.rm + 1 );
 		}
 
 		/* ELSE mod + r/m specify a disp##[base] or disp##(SIB) */
@@ -298,13 +304,13 @@ size_t ia32_modrm_decode( unsigned char *buf, unsigned int buf_len,
 	return size;		/* number of bytes found in instruction */
 }
 
-void ia32_reg_decode( unsigned char byte, x86_op_t *op, size_t gen_regs ) {
+void ia32_reg_decode( unsigned char byte, x86_op_t *op, size_t gen_regs, x86_insn_t *insn) {
 	struct modRM_byte modrm;
 	byte_decode( byte, &modrm );	/* get bitfields */
 
  	/* set operand to register ID */
 	op->type = op_register;
-	ia32_handle_register(&op->data.reg, modrm.reg + gen_regs);
+	ia32_handle_register(&op->data.reg, 0, PREFIX_HAS_REX(insn->prefix, PREFIX_REX_R), modrm.reg + gen_regs);
 
 	return;
 }

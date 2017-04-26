@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "libdis.h"
+#include "ia32_insn.h"
 #include <inttypes.h>
 
 #ifdef _MSC_VER
@@ -64,6 +65,12 @@ static int format_insn_prefix_str( enum x86_insn_prefix prefix, char *buf,
         if ( prefix & 2 ) { STRNCAT( buf, prefix_strings[2], len ); }
         if ( prefix & 4 ) { STRNCAT( buf, prefix_strings[3], len ); }
         if ( prefix & 8 ) { STRNCAT( buf, prefix_strings[4], len ); }
+
+if (PREFIX_HAS_REX(prefix, PREFIX_REX)) { STRNCAT( buf, "REX", len ); }
+if (PREFIX_HAS_REX(prefix, PREFIX_REX_B)) { STRNCAT( buf, "B", len ); }
+if (PREFIX_HAS_REX(prefix, PREFIX_REX_X)) { STRNCAT( buf, "X", len ); }
+if (PREFIX_HAS_REX(prefix, PREFIX_REX_R)) { STRNCAT( buf, "R", len ); }
+if (PREFIX_HAS_REX(prefix, PREFIX_REX_W)) { STRNCAT( buf, "W", len ); }
 
         /* return the number of characters added */
         return (len_orig - len);
@@ -744,7 +751,7 @@ static int format_operand_native( x86_op_t *op, x86_insn_t *insn, char *buf,
                                           insn->addr + insn->size), len );
                                 break;
                         } else {
-                        	STRNCATF( buf, "0x%08" PRIX32, op->data.sdword +
+                        	STRNCATF( buf, "0x%08" PRIX64, op->data.sdword +
                                 	  insn->addr + insn->size, len );
 			}
                         break;
@@ -825,7 +832,7 @@ static int format_operand_xml( x86_op_t *op, x86_insn_t *insn, char *buf,
                                 break;
                         } else {
 
-                        	STRNCATF( buf, "value=\"0x%08" PRIX32 "\"/>\n",
+                        	STRNCATF( buf, "value=\"0x%08" PRIX64 "\"/>\n",
                                       op->data.sdword + insn->addr + insn->size,
                                       len );
 			}
@@ -1127,8 +1134,8 @@ static int format_raw_insn( x86_insn_t *insn, char *buf, int len ){
          * Effective addresses are encoded as:
          * disp(base_reg,index_reg,scale)
          */
-        STRNCATF( buf, "0x%08" PRIX32 "|", insn->addr  , len );
-        STRNCATF( buf, "0x%08" PRIX32 "|", insn->offset, len );
+        STRNCATF( buf, "0x%08" PRIX64 "|", insn->addr  , len );
+        STRNCATF( buf, "0x%08" PRIX64 "|", insn->offset, len );
         STRNCATF( buf, "%d|"    , insn->size  , len );
 
         /* print bytes */
@@ -1153,7 +1160,7 @@ static int format_raw_insn( x86_insn_t *insn, char *buf, int len ){
         len -= format_insn_eflags_str( insn->flags_tested, buf, len );
         STRNCAT( buf, "|", len );
         STRNCATF( buf, "%d|", insn->stack_mod, len );
-        STRNCATF( buf, "%" PRId32 "|", insn->stack_mod_val, len );
+        STRNCATF( buf, "%" PRId64 "|", insn->stack_mod_val, len );
 
 	opstr.len = len;
 	x86_operand_foreach( insn, format_op_raw, &opstr, op_any );
@@ -1167,8 +1174,8 @@ static int format_xml_insn( x86_insn_t *insn, char *buf, int len ) {
 
         STRNCAT( buf, "<x86_insn>\n", len );
 
-        STRNCATF( buf, "\t<address rva=\"0x%08" PRIX32 "\" ", insn->addr, len );
-        STRNCATF( buf, "offset=\"0x%08" PRIX32 "\" ", insn->offset, len );
+        STRNCATF( buf, "\t<address rva=\"0x%08" PRIX64 "\" ", insn->addr, len );
+        STRNCATF( buf, "offset=\"0x%08" PRIX64 "\" ", insn->offset, len );
         STRNCATF( buf, "size=%d bytes=\"", insn->size, len );
 
         for ( i = 0; i < insn->size; i++ ) {
@@ -1388,7 +1395,7 @@ int x86_format_insn( x86_insn_t *insn, char *buf, int len,
         } else { /* default to native */
                 /* NATIVE style: RVA\tBYTES\tMNEMONIC\tOPERANDS */
                 /* print address */
-                STRNCATF( buf, "%08" PRIX32 "\t", insn->addr, len );
+                STRNCATF( buf, "%08" PRIX64 "\t", insn->addr, len );
 
                 /* print bytes */
                 for ( i = 0; i < insn->size; i++ ) {
