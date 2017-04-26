@@ -50,9 +50,9 @@ fi
 }
 
 (grep "^AM_PROG_LIBTOOL" $srcdir/configure.ac >/dev/null) && {
-  (libtool --version) < /dev/null > /dev/null 2>&1 || {
+  (glibtool --version) < /dev/null > /dev/null 2>&1 || {
     echo
-    echo "**Error**: You must have \`libtool' installed."
+    echo "**Error**: You must have \`glibtool' installed."
     echo "You can get it from: ftp://ftp.gnu.org/pub/gnu/"
     DIE=1
   }
@@ -131,8 +131,8 @@ do
       fi
       if grep "^AM_PROG_LIBTOOL" configure.ac >/dev/null; then
 	if test -z "$NO_LIBTOOLIZE" ; then
-	  echo "Running libtoolize..."
-	  libtoolize --force --copy
+	  echo "Running glibtoolize..."
+	  glibtoolize --force --copy
 	fi
       fi
       echo "Running aclocal $aclocalinclude ..."
