@@ -1,0 +1,38 @@
+# Objects and archives
+*.o
+*.lo
+*.Po
+*.Plo
+*.a
+*.la
+*.so*
+
+# Backup files
+*~
+
+# Output Makefiles
+Makefile
+Makefile.in
+
+# Configure/auto* output
+config.h
+config.h.in
+config.log
+config.status
+config.sub
+configure
+libtool
+stamp-h1
+aclocal.m4
+.libs/
+autom4te.cache/
+ar-lib
+compile
+config.guess
+depcomp
+install-sh
+ltmain.sh
+missing
+autoscan.log
+configure.scan
+
