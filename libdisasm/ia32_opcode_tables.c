@@ -150,7 +150,7 @@ static ia32_insn_t tbl_Main[] = {	/* One-byte Opcodes */
 	 { 0,   INS_XCHG,  0,   ADDRMETH_E | OPTYPE_b | OP_W | OP_R,   ADDRMETH_G | OPTYPE_b | OP_W | OP_R,   ARG_NONE,   cpu_80386 | isa_GP,   "xchg", "",   0,   0,   0,  0 , 0, 1 },
 	 { 0,   INS_XCHG,  0,   ADDRMETH_E | OPTYPE_v | OP_W | OP_R,   ADDRMETH_G | OPTYPE_v | OP_W | OP_R,   ARG_NONE,   cpu_80386 | isa_GP,   "xchg", "",   0,   0,   0,  0 , 0, 1 },
 	 { 0,   INS_MOV,  0,   ADDRMETH_E | OPTYPE_b | OP_W,   ADDRMETH_G | OPTYPE_b | OP_R,   ARG_NONE,   cpu_80386 | isa_GP,   "mov", "",   0,   0,   0,  0 , 0, 1 },
-	 { 0,   INS_MOV,  0,   ADDRMETH_E | OPTYPE_v | OP_W,   ADDRMETH_G | OPTYPE_v | OP_R,   ARG_NONE,   cpu_80386 | isa_GP,   "mov", "",   0,   0,   0,  0 , 0, 1},
+	 { 0,   INS_MOV,  0,   ADDRMETH_E | OPTYPE_v | OP_W,   ADDRMETH_G | OPTYPE_v | OP_R,   ARG_NONE,   cpu_80386 | isa_GP,   "mov", "",   0,   0,   0,  0 , 0, 1}, // XXX
 	 { 0,   INS_MOV,  0,   ADDRMETH_G | OPTYPE_b | OP_W,   ADDRMETH_E | OPTYPE_b | OP_R,   ARG_NONE,   cpu_80386 | isa_GP,   "mov", "",   0,   0,   0,  0 , 0, 1 },
 	 { 0,   INS_MOV,  0,   ADDRMETH_G | OPTYPE_v | OP_W,   ADDRMETH_E | OPTYPE_v | OP_R,   ARG_NONE,   cpu_80386 | isa_GP,   "mov", "",   0,   0,   0,  0 , 0, 1 },
 	 { 0,   INS_MOV,  0,   ADDRMETH_E | OPTYPE_w | OP_W,   ADDRMETH_S | OPTYPE_w | OP_R,   ARG_NONE,   cpu_80386 | isa_GP,   "mov", "",   0,   0,   0,  0 , 0, 1 },
@@ -482,7 +482,7 @@ static ia32_insn_t tbl_0F[] = {	/* Two-byte Opcodes */
 	 { 0, INS_INVALID,  0,   ARG_NONE,   ARG_NONE,   ARG_NONE,   0,   "", "",   0,   0,   0,  0 , 0 },
 	 { 0, INS_INVALID,  0,   ARG_NONE,   ARG_NONE,   ARG_NONE,   0,   "", "",   0,   0,   0,  0 , 0 },
 	 { 0, INS_INVALID,  0,   ARG_NONE,   ARG_NONE,   ARG_NONE,   0,   "", "",   0,   0,   0,  0 , 0 },
-	 { 0, INS_INVALID,  0,   ARG_NONE,   ARG_NONE,   ARG_NONE,   0,   "", "",   0,   0,   0,  0 , 0 },
+	 { idx_660F3A, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0, 1 },
 	 { 0, INS_INVALID,  0,   ARG_NONE,   ARG_NONE,   ARG_NONE,   0,   "", "",   0,   0,   0,  0 , 0 },
 	 { 0, INS_INVALID,  0,   ARG_NONE,   ARG_NONE,   ARG_NONE,   0,   "", "",   0,   0,   0,  0 , 0 },
 	 { 0, INS_INVALID,  0,   ARG_NONE,   ARG_NONE,   ARG_NONE,   0,   "", "",   0,   0,   0,  0 , 0 },
@@ -743,7 +743,6 @@ static ia32_insn_t tbl_660F[] = {	/* SIMD 66 Two-byte Opcodes */
 	 { 0, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0 },
 	 { 0, INS_UNKNOWN,  0, ADDRMETH_W | OPTYPE_dq | OP_R, ADDRMETH_W | OPTYPE_dq | OP_R, ARG_NONE, cpu_PENTIUM4 | isa_GP, "ptest", "", 0, 0, 0, 0, 0, 1 }, // XXX ptest
 	 { 0, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0 },
-	 //{ 0, INS_UNKNOWN,  0, ADDRMETH_Q | OPTYPE_ss | OP_R, ADDRMETH_V | OPTYPE_ss | OP_R, ADDRMETH_I | OPTYPE_b | OP_R , cpu_PENTIUM4 | isa_GP, "pcmpistri", "", 0, 0, 0, 0, 0, 1 },
 	 { idx_660F3A, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0, 1 },
 	 { 0, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0 },
 	 { 0, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0 },
@@ -1020,7 +1019,7 @@ static ia32_insn_t tbl_F20F[] = {	/* SIMD F2 Two-byte Opcodes */
 	 { 0, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0 },
 	 { 0, INS_UNKNOWN,  0, ADDRMETH_V | OPTYPE_sd | OP_R, ADDRMETH_W | OPTYPE_sd | OP_R, ARG_NONE, cpu_PENTIUM4 | isa_GP, "addsd", "", 0, 0, 0, 0, 0, 1 },
 	 { 0, INS_UNKNOWN,  0, ADDRMETH_V | OPTYPE_sd | OP_R, ADDRMETH_W | OPTYPE_sd | OP_R, ARG_NONE, cpu_PENTIUM4 | isa_GP, "mulsd", "", 0, 0, 0, 0, 0, 1 },
-	 { 0, INS_UNKNOWN,  0, ADDRMETH_V | OPTYPE_ss | OP_R, ADDRMETH_W | OPTYPE_sd | OP_R, ARG_NONE, cpu_PENTIUM4 | isa_GP, "cvtsd2ss", "", 0, 0, 0, 0, 0 },
+	 { 0, INS_UNKNOWN,  0, ADDRMETH_V | OPTYPE_ss | OP_R, ADDRMETH_W | OPTYPE_sd | OP_R, ARG_NONE, cpu_PENTIUM4 | isa_GP, "cvtsd2ss", "", 0, 0, 0, 0, 0, 1 },
 	 { 0, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0 },
 	 { 0, INS_UNKNOWN,  0, ADDRMETH_V | OPTYPE_sd | OP_R, ADDRMETH_W | OPTYPE_sd | OP_R, ARG_NONE, cpu_PENTIUM4 | isa_GP, "subsd", "", 0, 0, 0, 0, 0, 1 },
 	 { 0, INS_UNKNOWN,  0, ADDRMETH_V | OPTYPE_sd | OP_R, ADDRMETH_W | OPTYPE_sd | OP_R, ARG_NONE, cpu_PENTIUM4 | isa_GP, "minsd", "", 0, 0, 0, 0, 0 },
@@ -1570,7 +1569,8 @@ static ia32_insn_t tbl_660F3A[] = {	/* Group ?? SSE */
 	 { 0, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0 },
 	 { 0, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0 },
 	 { 0, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0 },
-	 { 0, INS_UNKNOWN,  0, ADDRMETH_Q | OPTYPE_dq | OP_R, ADDRMETH_Q | OPTYPE_dq | OP_R, ADDRMETH_I | OPTYPE_b | OP_R , cpu_PENTIUM4 | isa_GP, "palignr", "", 0, 0, 0, 0, 0, 1 },
+	 // XXX { 0, INS_UNKNOWN,  0, ADDRMETH_Q | OPTYPE_dq | OP_R, ADDRMETH_Q | OPTYPE_dq | OP_R, ADDRMETH_I | OPTYPE_b | OP_R , cpu_PENTIUM4 | isa_GP, "palignr", "", 0, 0, 0, 0, 0, 1 },
+	 { 0, INS_UNKNOWN,  0, ADDRMETH_V | OPTYPE_pd | OP_W, ADDRMETH_Q | OPTYPE_pd | OP_R, ADDRMETH_I | OPTYPE_b | OP_R , cpu_PENTIUM4 | isa_MMX, "palignr", "", 0, 0, 0, 0, 0, 1 }, // XXX
 	 { 0, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0 },
 	 { 0, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0 },
 	 { 0, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0 },
@@ -1654,7 +1654,7 @@ static ia32_insn_t tbl_660F3A[] = {	/* Group ?? SSE */
 	 { 0, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0 },
 	 { 0, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0 },
 	 { 0, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0 },
-	 { 0, INS_UNKNOWN,  0, ADDRMETH_Q | OPTYPE_dq | OP_R, ADDRMETH_Q | OPTYPE_dq | OP_R, ADDRMETH_I | OPTYPE_b | OP_R , cpu_PENTIUM4 | isa_GP, "pcmpistri", "", 0, 0, 0, 0, 0, 1 },
+	 { 0, INS_UNKNOWN,  0, ADDRMETH_V | OPTYPE_pd | OP_W, ADDRMETH_Q | OPTYPE_pd | OP_R, ADDRMETH_I | OPTYPE_b | OP_R , cpu_PENTIUM4 | isa_MMX, "pcmpistri", "", 0, 0, 0, 0, 0, 1 }, // XXX
 	 { 0, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0 },
 	 { 0, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0 },
 	 { 0, INS_INVALID,  0, ARG_NONE, ARG_NONE, ARG_NONE, cpu_PENTIUM4 | isa_GP, "", "", 0, 0, 0, 0, 0 },
@@ -2952,9 +2952,9 @@ static ia32_insn_t tbl_0F0F[] = {	/* 3D Now! 0F Suffix */
 static ia32_insn_t tbl_rex_prefixes[] = {
 	 { idx_Main,   INS_FLAG_PREFIX | PREFIX_REX,  0,   ARG_NONE,   ARG_NONE,   ARG_NONE,   cpu_AMD64 | isa_GP,   "", "",   0,   0,   0,  0 , 0, 1 },
 	 { idx_Main,   INS_FLAG_PREFIX | PREFIX_REX_B,  0,   ARG_NONE,   ARG_NONE,   ARG_NONE,   cpu_AMD64 | isa_GP,   "", "",   0,   0,   0,  0 , 0, 1 },
-	 { idx_Main,   INS_FLAG_PREFIX | PREFIX_REX_X,  0,   ARG_NONE,   ARG_NONE,   ARG_NONE,   cpu_AMD64 | isa_GP,   "", "",   0,   0,   0,  0 , 0, 1 },
+	 { idx_Main,   INS_FLAG_PREFIX | PREFIX_REX_X,                 0,   ARG_NONE,   ARG_NONE,   ARG_NONE,   cpu_AMD64 | isa_GP,   "", "",   0,   0,   0,  0 , 0, 1 },
 	 { idx_Main,   INS_FLAG_PREFIX | PREFIX_REX_B | PREFIX_REX_X,  0,   ARG_NONE,   ARG_NONE,   ARG_NONE,   cpu_AMD64 | isa_GP,   "", "",   0,   0,   0,  0 , 0, 1 },
-	 { idx_Main,   INS_FLAG_PREFIX | PREFIX_REX_R,  0,   ARG_NONE,   ARG_NONE,   ARG_NONE,   cpu_AMD64 | isa_GP,   "", "",   0,   0,   0,  0 , 0, 1 },
+	 { idx_Main,   INS_FLAG_PREFIX | PREFIX_REX_R,                 0,   ARG_NONE,   ARG_NONE,   ARG_NONE,   cpu_AMD64 | isa_GP,   "", "",   0,   0,   0,  0 , 0, 1 },
 	 { idx_Main,   INS_FLAG_PREFIX | PREFIX_REX_R | PREFIX_REX_B,  0,   ARG_NONE,   ARG_NONE,   ARG_NONE,   cpu_AMD64 | isa_GP,   "", "",   0,   0,   0,  0 , 0, 1 },
 	 { idx_Main,   INS_FLAG_PREFIX | PREFIX_REX_R | PREFIX_REX_X,  0,   ARG_NONE,   ARG_NONE,   ARG_NONE,   cpu_AMD64 | isa_GP,   "", "",   0,   0,   0,  0 , 0, 1 },
 	 { idx_Main,   INS_FLAG_PREFIX | PREFIX_REX_R | PREFIX_REX_X | PREFIX_REX_B,  0,   ARG_NONE,   ARG_NONE,   ARG_NONE,   cpu_AMD64 | isa_GP,   "", "",   0,   0,   0,  0 , 0, 1 },
@@ -3045,7 +3045,7 @@ ia32_table_desc_t ia32_tables[] = {
 	{ tbl_0F0F, tbl_suffix, 0x00, 0xFF, 0x00, 0xBF },
         { tbl_rex_prefixes, tbl_prefix, 0x00, 0x0F, 0x00, 0x0F },
         { tbl_movxsd, tbl_prefix, 0x00, 0xFF, 0x63, 0x63 },
-        { tbl_660F3A, tbl_extension, 0x00, 0xFF, 0x08, 0x63 }
+        { tbl_660F3A, tbl_opcode, 0x00, 0xFF, 0x08, 0x63 }
 };
 /* ia32_opcode_tables.h */
 /* Table index constants: 

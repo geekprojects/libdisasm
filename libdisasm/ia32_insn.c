@@ -436,16 +436,21 @@ size_t ia32_table_lookup( unsigned char *buf, size_t buf_len,
                 if (ia32_tables[subtable].type == tbl_extension)
                 {
                     sub_size = ia32_table_lookup( &buf[1], buf_len - 1, subtable, raw_insn, prefixes);
+	            if ( sub_size == INVALID_INSN || sub_size > buf_len || (*raw_insn)->mnem_flag == INS_INVALID )
+                    {
+                        return INVALID_INSN;
+                    }
                     return sub_size + size;
                 }
                 else
                 {
                     //raw_insn = raw_insn->amd64insn;
-	            size = ia32_table_lookup(buf, buf_len, subtable, raw_insn, prefixes);
-	            if ( size == INVALID_INSN || size > buf_len || (*raw_insn)->mnem_flag == INS_INVALID )
+	            sub_size = ia32_table_lookup(buf, buf_len, subtable, raw_insn, prefixes);
+	            if ( sub_size == INVALID_INSN || sub_size > buf_len || (*raw_insn)->mnem_flag == INS_INVALID )
                     {
                         return INVALID_INSN;
                     }
+                    return sub_size;
                 }
             }
             else if (buf[0] == 0xc4 || buf[0] == 0xc5)
@@ -506,7 +511,7 @@ size_t ia32_table_lookup( unsigned char *buf, size_t buf_len,
 
                 if (vvvv != 0xf)
                 {
-                    printf("XXX: ia32_table_lookup: VEX: Unsupported register specified: %d\n", vvvv);
+                    //printf("XXX: ia32_table_lookup: VEX: Unsupported register specified: %d\n", vvvv);
                     //exit(255);
                 }
 
@@ -522,8 +527,8 @@ size_t ia32_table_lookup( unsigned char *buf, size_t buf_len,
                                     subtable = idx_660F;
                                     break;
                                 default:
-                                    printf("XXX: ia32_table_lookup: VEX: Unsupported mmmmm/pp: 0x%x/0x%x\n", mmmmm, pp);
-                                    exit(255);
+                                    fprintf(stderr, "XXX: ia32_table_lookup: VEX: Unsupported mmmmm/pp: 0x%x/0x%x\n", mmmmm, pp);
+                                    return INVALID_INSN;
                             }
                             break;
                         case 3:
@@ -557,8 +562,8 @@ size_t ia32_table_lookup( unsigned char *buf, size_t buf_len,
                             subtable = idx_F30F;
                             break;
                         default:
-                            printf("XXX: ia32_table_lookup: VEX: Unsupported pp: 0x%x\n", pp);
-                            exit(255);
+                            fprintf(stderr, "XXX: ia32_table_lookup: VEX: Unsupported pp: 0x%x\n", pp);
+                            return INVALID_INSN;
                     }
                 }
 
@@ -572,11 +577,10 @@ size_t ia32_table_lookup( unsigned char *buf, size_t buf_len,
             else
             {
                 // Not a valid 64 bit instruction 
-                printf("XXX: ia32_table_lookup: %p: Not a valid 64 bit instruction\n", buf);
-                exit(255);
+                //fprintf(stderr, "XXX: ia32_table_lookup: %p: Not a valid 64 bit instruction\n", buf);
                 return INVALID_INSN;
             }
-            return size;
+            return INVALID_INSN;
         }
 
 	if ( (*raw_insn)->mnem_flag & INS_FLAG_PREFIX ) {
@@ -783,7 +787,7 @@ size_t ia32_disasm_addr( unsigned char * buf, size_t buf_len,
 		return 0;
 	}
 
-
 	insn->size = size;
+
 	return size;		/* return size of instruction in bytes */
 }
