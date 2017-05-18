@@ -402,6 +402,7 @@ enum x86_insn_type {
         insn_in = 0xE002,       /* input from port/bus */
         insn_out = 0xE003,      /* output to port/bus */
         insn_cpuid = 0xE004,
+        insn_syscall = 0xE005,
         /* insn_other */
         insn_nop = 0xF001,
         insn_bcdconv = 0xF002,  /* convert to or from BCD */
