@@ -1,7 +1,7 @@
 libdisasm
 ===
 
-This is a fork of [libdisasm]() that hacks^H^H^H^H^H adds in very basic
+This is a fork of [libdisasm](http://bastard.sourceforge.net/libdisasm.html) that hacks^H^H^H^H^H adds in very basic
 64 bit support. There's still a lot of work to do to fully support SSE and
 other instructions that are standard in 64 bit instruction sets.
 
